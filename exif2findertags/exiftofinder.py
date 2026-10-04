@@ -3,9 +3,16 @@
 import pathlib
 
 import osxmetadata
-from osxmetadata import MDITEM_ATTRIBUTE_DATA, MDITEM_ATTRIBUTE_SHORT_NAMES
+from osxmetadata import MDITEM_ATTRIBUTE_DATA
 
 from .exiftool import ExifToolCaching, get_exiftool_path
+from .metadata import (
+    read_finder_comment,
+    read_metadata,
+    remove_metadata,
+    write_finder_comment,
+    write_metadata,
+)
 from .phototemplate import PhotoTemplate, RenderOptions
 
 
@@ -17,23 +24,24 @@ def noop():
 DEFAULT_GROUP_TAG_TEMPLATE = "{GROUP}:{TAG}: {VALUE}"
 DEFAULT_TAG_TEMPLATE = "{TAG}: {VALUE}"
 
-# supported attributes for xattr_template
-EXTENDED_ATTRIBUTE_NAMES = [
-    "authors",
-    "comment",
-    "copyright",
-    "creator",
-    "description",
-    "findercomment",
-    "headline",
-    "keywords",
-    "participants",
-    "projects",
-    "rating",
-    "subject",
-    "title",
-    "version",
-]
+# supported attributes for xattr_template mapped to the Spotlight attribute each one writes
+EXTENDED_ATTRIBUTES = {
+    "authors": "kMDItemAuthors",
+    "comment": "kMDItemComment",
+    "copyright": "kMDItemCopyright",
+    "creator": "kMDItemCreator",
+    "description": "kMDItemDescription",
+    "findercomment": "kMDItemFinderComment",
+    "headline": "kMDItemHeadline",
+    "keywords": "kMDItemKeywords",
+    "participants": "kMDItemParticipants",
+    "projects": "kMDItemProjects",
+    "rating": "kMDItemStarRating",
+    "subject": "kMDItemSubject",
+    "title": "kMDItemTitle",
+    "version": "kMDItemVersion",
+}
+EXTENDED_ATTRIBUTE_NAMES = list(EXTENDED_ATTRIBUTES)
 EXTENDED_ATTRIBUTE_NAMES_QUOTED = [f"'{x}'" for x in EXTENDED_ATTRIBUTE_NAMES]
 
 
@@ -241,12 +249,21 @@ class ExifToFinder:
         """Write extended attributes to file"""
         if self.dry_run:
             return
-        md = osxmetadata.OSXMetaData(filename)
-        attr_name = MDITEM_ATTRIBUTE_SHORT_NAMES[attr]
-        islist = MDITEM_ATTRIBUTE_DATA[attr_name]["python_type"].startswith("list")
+        attr_name = EXTENDED_ATTRIBUTES[attr]
+        python_type = MDITEM_ATTRIBUTE_DATA[attr_name]["python_type"]
+        islist = python_type.startswith("list")
         if value:
             value = sorted(value) if islist else ", ".join(value)
-        file_value = md.get(attr_name)
+            if python_type in ("float", "int"):
+                try:
+                    value = float(value) if python_type == "float" else int(value)
+                except ValueError:
+                    self.verbose(
+                        f"Skipping extended attribute {attr_name} for {filename}: "
+                        f"'{value}' is not a number"
+                    )
+                    return False
+        file_value = read_metadata(filename, attr_name)
 
         if file_value and islist:
             file_value = sorted(file_value)
@@ -254,7 +271,7 @@ class ExifToFinder:
         file_updated = False
         if (not file_value and not value) or file_value == value:
             # if both not set or both equal, nothing to do
-            # get_attribute returns None if not set and value will be [] if not set so can't directly compare
+            # read_metadata returns None if not set and value will be [] if not set so can't directly compare
             self.verbose(
                 f"Skipping extended attribute {attr_name} for {filename}: nothing to do"
             )
@@ -262,14 +279,20 @@ class ExifToFinder:
             self.verbose(
                 f"Writing extended attribute {attr_name}={value} to {filename}"
             )
-            md.set(attr_name, value)
+            if attr_name == "kMDItemFinderComment":
+                write_finder_comment(filename, value)
+            else:
+                write_metadata(filename, attr_name, value)
             file_updated = True
         else:
             self.verbose(
                 f"Existing extended attribute {attr_name}={file_value} but new value is null; clearing {attr_name} from {filename}"
             )
             # value not set but there was already a value so remove it
-            md.clear_attribute(attr_name)
+            if attr_name == "kMDItemFinderComment":
+                write_finder_comment(filename, None)
+            else:
+                remove_metadata(filename, attr_name)
             file_updated = True
 
         return file_updated
@@ -278,12 +301,10 @@ class ExifToFinder:
         """Write Finder comment to file"""
         if self.dry_run:
             return
-        md = osxmetadata.OSXMetaData(filename)
-        fc = md.findercomment
-        if self.overwrite_fc:
-            md.findercomment = comment
-        else:
-            md.findercomment = fc + "\n" + comment if fc else comment
+        fc = read_finder_comment(filename)
+        if not self.overwrite_fc and fc:
+            comment = fc + "\n" + comment
+        write_finder_comment(filename, comment)
 
     def format_tag_value(self, filename, tag, exiftool):
         """Format a tag value with a template"""

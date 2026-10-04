@@ -10,7 +10,6 @@ import sys
 from functools import partial
 
 import click
-import osxmetadata
 from cloup import (
     Command,
     Context,
@@ -24,7 +23,7 @@ from cloup import (
     version_option,
 )
 from cloup.constraints import RequireAtLeast, mutually_exclusive
-from osxmetadata import MDITEM_ATTRIBUTE_DATA, MDITEM_ATTRIBUTE_SHORT_NAMES
+from osxmetadata import MDITEM_ATTRIBUTE_DATA
 from rich.console import Console
 from rich.markdown import Markdown
 from yaspin import yaspin
@@ -34,6 +33,7 @@ from .exiftofinder import (
     DEFAULT_GROUP_TAG_TEMPLATE,
     DEFAULT_TAG_TEMPLATE,
     EXTENDED_ATTRIBUTE_NAMES,
+    EXTENDED_ATTRIBUTES,
     EXTENDED_ATTRIBUTE_NAMES_QUOTED,
     ExifToFinder,
 )
@@ -126,8 +126,8 @@ The following attributes may be used with '--xattr-template':
         ]
         for attr_key in sorted(EXTENDED_ATTRIBUTE_NAMES):
             # get short and long name
-            attr = MDITEM_ATTRIBUTE_SHORT_NAMES[attr_key]
-            short_name = MDITEM_ATTRIBUTE_DATA[attr]["short_name"]
+            attr = EXTENDED_ATTRIBUTES[attr_key]
+            short_name = attr_key
             long_name = MDITEM_ATTRIBUTE_DATA[attr]["name"]
             constant = MDITEM_ATTRIBUTE_DATA[attr]["xattr_constant"]
 

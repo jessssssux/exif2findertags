@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exif2findertags"
+dynamic = ["version"]
+description = "Read exif metadata from images with exiftool and write to MacOS Finder keywords"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Rhet Turnbull", email = "rturnbull+git@gmail.com" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "click>=8.1.3,<9",
+    "cloup>=3,<5",
+    "osxmetadata>=1.4.1,<2",
+    "pathvalidate>=3,<4",
+    "pyobjc-core>=11",
+    "pyobjc-framework-Cocoa>=11",
+    "pyobjc-framework-CoreServices>=11",
+    "pyobjc-framework-Quartz>=11",
+    "pyobjc-framework-Vision>=11",
+    "rich>=13",
+    "textx>=4,<5",
+    "wurlitzer>=3.0.3,<4",
+    "xattr>=1.0",
+    "yaspin>=3,<4",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.urls]
+GitHub = "https://github.com/RhetTbull/exif2findertags"
+
+[project.scripts]
+exif2findertags = "exif2findertags.cli:cli"
+
+[tool.setuptools.dynamic]
+version = { attr = "exif2findertags._version.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["exif2findertags*"]
+
+[tool.setuptools.package-data]
+exif2findertags = ["phototemplate.tx", "phototemplate.md"]

@@ -4,17 +4,21 @@ Read exif metadata from images with [exiftool](https://exiftool.org/) and write 
 Bonus feature: exif2findertags can also use Apple's internal text detection capability to detect text in images and write the text to extended attributes or Finder comments to make it easily searchable using Spotlight.  See `{detected_text}` below in the discussion of the template system.
 
 # Installation
-I recommend you install `exif2findertags` with [pipx](https://github.com/pipxproject/pipx). If you use `pipx`, you will not need to create a virtual environment as `pipx` takes care of this. The easiest way to do this on a Mac is to use [homebrew](https://brew.sh/):
+`exif2findertags` needs macOS and Python 3.10 or later. Install it with [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/). Both tools give the command its own virtual environment. The easiest way to get either tool on a Mac is [homebrew](https://brew.sh/):
 
-- Open `Terminal` (search for `Terminal` in Spotlight or look in `Applications/Utilities`)
-- Install `homebrew` according to instructions at [https://brew.sh/](https://brew.sh/)
-- Type the following into Terminal: `brew install pipx`
-- Then type this: `pipx install git+https://github.com/RhetTbull/exif2findertags.git`
-- Now you should be able to run `exif2findertags` by typing: `exif2findertags`
+- Open `Terminal` (search for `Terminal` in Spotlight or look in `Applications/Utilities`).
+- Install `homebrew` according to the instructions at [https://brew.sh/](https://brew.sh/).
+- Type `brew install uv exiftool` into Terminal.
+- Type `uv tool install git+https://github.com/jessssssux/exif2findertags.git` into Terminal.
+- Type `exif2findertags --help` to run `exif2findertags`.
 
-Once you've installed `exif2findertags` with pipx, to upgrade to the latest version:
+To upgrade to the latest version, type:
 
-    pipx upgrade exif2findertags
+    uv tool upgrade exif2findertags
+
+If you use pipx, type `pipx install git+https://github.com/jessssssux/exif2findertags.git` and `pipx upgrade exif2findertags` instead.
+
+This fork updates the 2023 release of [RhetTbull/exif2findertags](https://github.com/RhetTbull/exif2findertags) for current versions of Python, PyObjC, textX and osxmetadata. See [CHANGELOG.md](CHANGELOG.md) for the changes.
 
 `exif2findertags` uses [exiftool](https://exiftool.org) to extract metadata from photos and videos so you'll need to install exiftool.  `exif2findertags` will look in the path for exiftool.  Alternatively, you can specify the path to exiftool using the `--exiftool-path` option.  Because it uses exiftool, `exif2findertags` can read any metadata which exiftool is able to read.
 
@@ -522,6 +526,14 @@ For example:
 `--tag-value` will produce a Finder tag named with just the value of the specified tag without the tag name.  For example:
 
 - `Jane Smith` instead of `PersonInImage: Jane Smith`
+
+# How metadata is stored
+
+`exif2findertags` writes Finder tags, Finder comments and the `--xattr-template` attributes to the file as `com.apple.metadata` extended attributes. Spotlight imports these attributes when it indexes the file, so `mdfind` can search them. The tool also reads existing values from the file, not from the Spotlight index. Because of this, it works the same on files that Spotlight did not index yet, in temporary directories and on volumes with indexing turned off.
+
+The Finder keeps a second copy of each Finder comment in the `.DS_Store` file of the folder. `exif2findertags` sets the comment through the Finder so that Get Info shows it. The first time you run it, macOS can ask you to let your terminal control the Finder.
+
+If a file already contains an embedded value for an attribute (for example an EXIF description in a JPEG), Spotlight shows the embedded value in that attribute. The value from `exif2findertags` stays on the file as an extended attribute.
 
 # Contributing
 

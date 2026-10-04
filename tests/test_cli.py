@@ -8,6 +8,12 @@ import pytest
 from click.testing import CliRunner
 
 import exif2findertags
+from exif2findertags.metadata import (
+    read_finder_comment,
+    read_metadata,
+    remove_metadata,
+    write_finder_comment,
+)
 
 TEST_IMAGE = "tests/apples.jpeg"
 TEST_IMAGE_VISION = "tests/freewifi.jpeg"
@@ -286,11 +292,11 @@ def test_fc(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Make: Apple\nISO: 20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_fc_value(tmp_image):
@@ -311,11 +317,11 @@ def test_fc_value(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Apple\n20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_dry_run(tmp_image):
@@ -337,7 +343,7 @@ def test_dry_run(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert not fc
     tags = md.tags
     assert not tags
@@ -413,11 +419,11 @@ def test_fc_format(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Make=Apple\nISO=20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_fc_format_filter(tmp_image):
@@ -440,11 +446,11 @@ def test_fc_format_filter(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "make=APPLE\niso=20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_tag_no_overwrite(tmp_image):
@@ -508,7 +514,7 @@ def test_fc_no_overwrite(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Make: Apple"
 
     result = runner.invoke(
@@ -517,11 +523,11 @@ def test_fc_no_overwrite(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Make: Apple\nISO: 20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_fc_overwrite(tmp_image):
@@ -535,7 +541,7 @@ def test_fc_overwrite(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "Make: Apple"
 
     result = runner.invoke(
@@ -544,11 +550,11 @@ def test_fc_overwrite(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    fc = md.findercomment
+    fc = read_finder_comment(md.path)
     assert fc == "ISO: 20"
 
     # reset findercomment for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_tag_template(tmp_image):
@@ -619,10 +625,10 @@ def test_fc_template(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    assert md.findercomment == "Camera: Apple, iPhone SE (2nd generation)"
+    assert read_finder_comment(md.path) == "Camera: Apple, iPhone SE (2nd generation)"
 
     # reset comments for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_fc_template_2(tmp_image):
@@ -643,10 +649,10 @@ def test_fc_template_2(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    assert md.findercomment == "Camera: Apple, iPhone SE (2nd generation)\nISO=20"
+    assert read_finder_comment(md.path) == "Camera: Apple, iPhone SE (2nd generation)\nISO=20"
 
     # reset comments for next test
-    md.findercomment = None
+    write_finder_comment(md.path, None)
 
 
 def test_xattr_template(tmp_image):
@@ -666,10 +672,10 @@ def test_xattr_template(tmp_image):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image))
-    assert md.comment == "Camera: Apple, iPhone SE (2nd generation)"
+    assert read_metadata(md.path, "kMDItemComment") == "Camera: Apple, iPhone SE (2nd generation)"
 
     # reset comments for next test
-    md.comment = None
+    remove_metadata(md.path, "kMDItemComment")
 
 
 def test_xattr_template_invalid(tmp_image):
@@ -708,7 +714,74 @@ def test_xattr_template_detected_text(tmp_image_vision):
     )
     assert result.exit_code == 0
     md = osxmetadata.OSXMetaData(str(tmp_image_vision))
-    assert "disputed" in md.comment
+    assert "disputed" in read_metadata(md.path, "kMDItemComment")
 
     # reset comments for next test
-    md.comment = None
+    remove_metadata(md.path, "kMDItemComment")
+
+
+@pytest.mark.parametrize(
+    "attribute,template,expected",
+    [
+        ("description", "{Model}", "iPhone SE (2nd generation)"),
+        ("headline", "{Make}", "Apple"),
+        ("title", "{Make}", "Apple"),
+        ("keywords", "{Keywords}", ["Fruit", "Travel"]),
+        ("rating", "4", 4.0),
+    ],
+)
+def test_xattr_template_written_to_file(tmp_image, attribute, template, expected):
+    """test --xattr-template stores attributes that MDItemSetAttribute ignores, see #15"""
+    from exif2findertags.cli import cli
+    from exif2findertags.exiftofinder import EXTENDED_ATTRIBUTES
+
+    attr_name = EXTENDED_ATTRIBUTES[attribute]
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["--xattr-template", attribute, template, str(tmp_image)]
+    )
+    assert result.exit_code == 0
+    value = read_metadata(str(tmp_image), attr_name)
+    assert (sorted(value) if isinstance(value, list) else value) == expected
+
+    # reset for next test
+    remove_metadata(str(tmp_image), attr_name)
+
+
+def test_xattr_template_rating_not_a_number(tmp_image):
+    """test --xattr-template rating with a value that is not a number"""
+    from exif2findertags.cli import cli
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["--xattr-template", "rating", "{Make}", "--verbose", str(tmp_image)]
+    )
+    assert result.exit_code == 0
+    assert "is not a number" in result.output
+    assert read_metadata(str(tmp_image), "kMDItemStarRating") is None
+
+
+def test_fc_appends_to_existing_comment(tmp_image):
+    """test --fc appends to a comment already on a file that Spotlight has not indexed"""
+    from exif2findertags.cli import cli
+
+    write_finder_comment(str(tmp_image), "Existing comment")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--fc", "Make", str(tmp_image)])
+    assert result.exit_code == 0
+    assert read_finder_comment(str(tmp_image)) == "Existing comment\nMake: Apple"
+
+    # reset findercomment for next test
+    write_finder_comment(str(tmp_image), None)
+
+
+def test_help():
+    """test --help lists every extended attribute"""
+    from exif2findertags.cli import cli
+    from exif2findertags.exiftofinder import EXTENDED_ATTRIBUTE_NAMES
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    for attribute in EXTENDED_ATTRIBUTE_NAMES:
+        assert attribute in result.output
